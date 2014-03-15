@@ -36,7 +36,9 @@ function Scope (opts) {
     this.element.appendChild(this.svg);
     
     var p = this.polyline = createElement('polyline');
-    p.setAttribute('fill', opts.stroke || 'cyan');
+    p.setAttribute('fill', opts.fill || 'cyan');
+    p.setAttribute('stroke', opts.stroke || 'cyan');
+    p.setAttribute('strokeWidth', opts.strokeWidth || '2px');
     this.svg.appendChild(this.polyline);
     
     this.scale = 0;
@@ -102,7 +104,6 @@ Scope.prototype.draw = function (input) {
         points.push(x + ',' + y);
     }
     
-console.log(points.length); 
     points.push(this.width + ',' + this.height);
     this.polyline.setAttribute('points', points.join(' '));
 };
