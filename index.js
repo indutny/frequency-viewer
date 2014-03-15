@@ -8,6 +8,7 @@ var EventEmitter = require('events').EventEmitter;
 var fs = require('fs');
 var html = fs.readFileSync(__dirname + '/scope.html', 'utf8');
 var domify = require('domify');
+var slideways = require('slideways');
 
 module.exports = Scope;
 inherits(Scope, EventEmitter);
@@ -35,11 +36,22 @@ function Scope (opts) {
     this.element.appendChild(this.svg);
     
     var p = this.polyline = createElement('polyline');
-    p.setAttribute('stroke', opts.stroke || 'cyan');
-    p.setAttribute('stroke-width', opts.strokeWidth || '4px');
-    p.setAttribute('fill', 'transparent');
+    p.setAttribute('fill', opts.stroke || 'cyan');
     this.svg.appendChild(this.polyline);
+    
+    this.scale = 0;
+    this.createSlider({ min: -2, max: 2, init: 0 }, function (x) {
+        self.scale = Math.pow(2, x);
+    });
 }
+
+Scope.prototype.createSlider = function (opts, f) {
+    if (!opts) opts = {};
+    var a = slideways(opts);
+    if (f) a.on('value', f);
+    a.appendTo(this.element.querySelector('#sliders'));
+    return a;
+};
 
 Scope.prototype.appendTo = function (target) {
     if (typeof target === 'string') target = document.querySelector(target);
@@ -56,6 +68,7 @@ Scope.prototype.resize = function () {
 };
 
 Scope.prototype.draw = function (input) {
+    var self = this;
     var data = new Float32Array(input.length);
     for (var i = 0; i < input.length; i++) data[i] = input[i];
     
@@ -65,14 +78,32 @@ Scope.prototype.draw = function (input) {
     fft(1, reals, imags);
     mag(reals, reals, imags);
     
-    var points = [];
-    for (var i = 100; i < reals.data.length; i++) {
+    var points = [ '0,' + this.height ];
+    var pfreq, pd;
+    
+    for (var i = 0; i < data.length; i++) {
         var freq = i * this.rate / data.length;
-        var x = freq === 0 ? 0 : Math.log(freq) / 10 * this.width;
         var d = reals.data[i];
-        var y = this.height - d / 2;
+        if (d > 1e5) {
+            if (pd < 1e5) {
+                plot(pfreq, pd);
+            }
+            plot(freq, d);
+        }
+        else if (pd > 1e5) plot(freq, d);
+        
+        pd = d;
+        pfreq = freq;
+    }
+    
+    function plot (freq, d) {
+        var x = freq / 10;
+        var y = self.height - d / 1e4 * self.scale;
         points.push(x + ',' + y);
     }
+    
+console.log(points.length); 
+    points.push(this.width + ',' + this.height);
     this.polyline.setAttribute('points', points.join(' '));
 };
 
