@@ -42,7 +42,7 @@ function Scope (opts) {
     this.svg.appendChild(this.polyline);
     
     this.scale = 0;
-    this.createSlider({ min: -2, max: 2, init: 0 }, function (x) {
+    this.createSlider({ min: -1, max: 5, init: 0 }, function (x) {
         self.scale = Math.pow(2, x);
     });
 }
@@ -101,7 +101,7 @@ Scope.prototype.draw = function (input) {
     }
     
     function plot (freq, d) {
-        var x = (Math.log(freq) - 3) / 7 * self.width;
+        var x = (Math.log(1 + freq) - 3) / 7 * self.width;
         var y = Math.max(0, self.height - d / 1e4 * self.scale);
         points.push(x + ',' + y);
     }
