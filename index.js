@@ -72,7 +72,9 @@ Scope.prototype.resize = function () {
 Scope.prototype.draw = function (input) {
     var self = this;
     var data = new Float32Array(input.length);
-    for (var i = 0; i < input.length; i++) data[i] = input[i];
+    for (var i = 0; i < input.length; i++) {
+        data[i] = Math.min(1, Math.max(-1, input[i]));
+    }
     
     var reals = ndarray(data, [ data.length, 1 ]);
     var imags = ndarray(new Float32Array(data.length), [ data.length, 1 ]);
@@ -99,8 +101,8 @@ Scope.prototype.draw = function (input) {
     }
     
     function plot (freq, d) {
-        var x = freq / 10;
-        var y = self.height - d / 1e4 * self.scale;
+        var x = (Math.log(freq) - 3) / 7 * self.width;
+        var y = Math.max(0, self.height - d / 1e4 * self.scale);
         points.push(x + ',' + y);
     }
     
