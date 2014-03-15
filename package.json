@@ -1,7 +1,7 @@
 {
-  "name": "amplitude-viewer",
+  "name": "frequency-viewer",
   "version": "0.0.0",
-  "description": "render amplitudes like an oscilloscope in the browser given arrays of data",
+  "description": "plot frequencies in the browser from raw data",
   "main": "index.js",
   "dependencies": {
     "brfs": "~1.0.0",
@@ -23,16 +23,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/substack/amplitude-viewer.git"
+    "url": "git://github.com/substack/frequency-viewer.git"
   },
-  "homepage": "https://github.com/substack/amplitude-viewer",
+  "homepage": "https://github.com/substack/frequency-viewer",
   "keywords": [
     "oscilloscope",
     "scope",
-    "amplitude",
-    "browser",
+    "frequency",
+    "fft",
+    "ndarray",
     "ui",
-    "wave",
     "visualization"
   ],
   "author": {
