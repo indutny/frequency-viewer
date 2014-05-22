@@ -109,6 +109,10 @@ With [npm](https://npmjs.org) do:
 npm install frequency-viewer
 ```
 
+This module works well in [browserify](http://browserify.org).
+To use this module without using browserify, you can download a UMD build from
+[browserify cdn](http://wzrd.in/standalone/frequency-viewer@latest).
+
 # license
 
 MIT
