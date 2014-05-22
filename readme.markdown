@@ -87,6 +87,13 @@ var fscope = require('frequency-viewer')
 
 ## var scope = fscope(opts)
 
+Create a new frequency scope.
+
+You can set the baud rate with `opts.rate`, default: 44000.
+
+You can pass in a custom `opts.worker(function (data, cb) {})` to perform the
+fft work in a web worker.
+
 ## scope.draw(data)
 
 Update the polyline with `data`, a `Float32Array` of raw data to compute
@@ -100,6 +107,11 @@ element.
 ## scope.resize()
 
 Compute the height and width of the container, resizing accordingly.
+
+## var reals = fscope.worker(data)
+
+This is the function that performs the fft. If you want to run the fft code in a
+webworker, you can call `fscope.worker()` in your implementation.
 
 # install
 
