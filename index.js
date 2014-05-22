@@ -18,6 +18,9 @@ function Scope (opts) {
     if (!(this instanceof Scope)) return new Scope(opts);
     if (!opts) opts = {};
     this.rate = opts.rate || 44000;
+    this._worker = opts.worker || function (data, cb) {
+        cb(worker(data));
+    };
     
     this.element = domify(html)[0];
     this.element.style.width = '100%';
@@ -69,8 +72,8 @@ Scope.prototype.resize = function () {
     this.height = parseInt(style.height);
 };
 
-Scope.prototype.draw = function (input) {
-    var self = this;
+module.exports.worker = worker;
+function worker (input) {
     var data = new Float32Array(input.length);
     for (var i = 0; i < input.length; i++) {
         data[i] = Math.min(1, Math.max(-1, input[i]));
@@ -81,12 +84,22 @@ Scope.prototype.draw = function (input) {
     
     fft(1, reals, imags);
     mag(reals, reals, imags);
+    return reals;
+};
+
+Scope.prototype.draw = function (data) {
+    var self = this;
+    self._worker(data, function (reals) { self._draw(reals) });
+};
+
+Scope.prototype._draw = function (reals) {
+    var self = this;
     
     var points = [ '0,' + this.height ];
     var pfreq, pd;
     
-    for (var i = 0; i < data.length; i++) {
-        var freq = i * this.rate / data.length;
+    for (var i = 0; i < reals.data.length; i++) {
+        var freq = i * this.rate / reals.data.length;
         var d = reals.data[i];
         if (d > 1e5) {
             if (pd < 1e5) {
