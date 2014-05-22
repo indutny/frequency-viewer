@@ -1,4 +1,16 @@
-var fscope = require('../')();
+var work = require('webworkify');
+var w = work(require('./work.js'));
+var queue = [];
+w.addEventListener('message', function (ev) {
+    queue.shift()(ev.data);
+});
+
+var fscope = require('../../')({
+    worker: function (data, cb) {
+        queue.push(cb);
+        w.postMessage(data);
+    }
+});
 fscope.appendTo('#scope');
 setInterval(function () { fscope.draw(data) }, 50);
 
