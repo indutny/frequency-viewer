@@ -6,17 +6,17 @@
   "dependencies": {
     "brfs": "~1.0.0",
     "domify": "~0.2.0",
+    "fft.js": "^3.0.3",
     "inherits": "~2.0.1",
-    "ndarray": "~1.0.10",
-    "ndarray-complex": "~1.0.0",
-    "ndarray-fft": "~0.1.0",
     "slideways": "~0.0.2"
   },
   "devDependencies": {
     "tape": "~2.3.2"
   },
   "browserify": {
-    "transform": [ "brfs" ]
+    "transform": [
+      "brfs"
+    ]
   },
   "scripts": {
     "test": "tape test/*.js"

@@ -1,6 +1,4 @@
-var ndarray = require('ndarray');
-var fft = require('ndarray-fft');
-var mag = require('ndarray-complex').mag;
+var FFT = require('fft.js');
 
 var inherits = require('inherits');
 var EventEmitter = require('events').EventEmitter;
@@ -10,6 +8,10 @@ var html = fs.readFileSync(__dirname + '/scope.html', 'utf8');
 var domify = require('domify');
 var slideways = require('slideways');
 
+var FREQ_LOW = 10;
+var FREQ_HIGH = 20000;
+var POINT_DENSITY = 0.003;
+
 module.exports = Scope;
 inherits(Scope, EventEmitter);
 
@@ -18,9 +20,6 @@ function Scope (opts) {
     if (!(this instanceof Scope)) return new Scope(opts);
     if (!opts) opts = {};
     this.rate = opts.rate || 44000;
-    this._worker = opts.worker || function (data, cb) {
-        cb(worker(data));
-    };
     
     this.element = domify(html)[0];
     this.element.style.width = '100%';
@@ -48,6 +47,22 @@ function Scope (opts) {
     this.createSlider({ min: -1, max: 5, init: 0 }, function (x) {
         self.scale = Math.pow(2, x);
     });
+
+    this.fft = new FFT(opts.fft || 4096);
+
+    // Circular buffer
+    this.fftOffset = 0;
+    this.fftInput = this.fft.createComplexArray();
+
+    // Just storage
+    this.fftOutput = this.fft.createComplexArray();
+
+    // Output power
+    this.power = new Float64Array(this.fft.size);
+
+    // Frequency limits
+    this.fftLow = Math.floor((FREQ_LOW / this.rate) * this.fft.size);
+    this.fftHigh = Math.ceil((FREQ_HIGH / this.rate) * this.fft.size);
 }
 
 Scope.prototype.createSlider = function (opts, f) {
@@ -72,50 +87,82 @@ Scope.prototype.resize = function () {
     this.height = parseInt(style.height);
 };
 
-module.exports.worker = worker;
-function worker (input) {
-    var data = new Float32Array(input.length);
-    for (var i = 0; i < input.length; i++) {
-        data[i] = Math.min(1, Math.max(-1, input[i]));
+Scope.prototype._compute = function _compute (input) {
+    // Fill circular buffer
+    var off = 0;
+    var fftInput = this.fftInput;
+    var fftOff = this.fftOffset;
+    while (off < input.length) {
+        var limit = Math.min(input.length - off,
+                             (fftInput.length - fftOff) >>> 1);
+        for (var i = 0; i < limit; i++) {
+            fftInput[fftOff] = input[off];
+            off++;
+            fftOff += 2;
+        }
+        fftOff %= fftInput.length;
+        if (fftOff !== 0)
+            break;
     }
-    
-    var reals = ndarray(data, [ data.length, 1 ]);
-    var imags = ndarray(new Float32Array(data.length), [ data.length, 1 ]);
-    
-    fft(1, reals, imags);
-    mag(reals, reals, imags);
-    return reals;
+
+    // Apply transform
+    this.fft.transform(this.fftOutput, this.fftInput);
+
+    // Get power output
+    var norm = Math.pow(this.fft.size, 2);
+    for (var i = 0; i < this.fftOutput.length; i += 2) {
+      var re = this.fftOutput[i];
+      var im = this.fftOutput[i + 1];
+
+      this.power[i >>> 1] = (Math.pow(re, 2) + Math.pow(im, 2)) / norm;
+    }
+    return this.power;
 };
+
 
 Scope.prototype.draw = function (data) {
-    var self = this;
-    self._worker(data, function (reals) { self._draw(reals) });
+    var mag = this._compute(data);
+    this._draw(mag);
 };
 
-Scope.prototype._draw = function (reals) {
+Scope.prototype._draw = function (data) {
     var self = this;
-    
+
     var points = [ '0,' + this.height ];
     var pfreq, pd;
     
-    for (var i = 0; i < reals.data.length; i++) {
-        var freq = i * this.rate / reals.data.length;
-        var d = reals.data[i];
-        if (d > 1e5) {
-            if (pd < 1e5) {
-                plot(pfreq, pd);
-            }
-            plot(freq, d);
-        }
-        else if (pd > 1e5) plot(freq, d);
-        
-        pd = d;
-        pfreq = freq;
+    // Group points
+    var lastOff = -1;
+    var accPow = 0;
+    var accCount = 0;
+
+    var reference = 1e-8;
+    for (var i = this.fftLow; i < this.fftHigh; i++) {
+      accPow += data[i];
+      accCount++;
+
+      var freq = (i - this.fftLow) / (this.fftHigh - this.fftLow) *
+                 (FREQ_HIGH - FREQ_LOW) + FREQ_LOW;
+      var off = Math.log10(freq / FREQ_LOW) /
+          Math.log10(FREQ_HIGH / FREQ_LOW);
+
+      // Group values to not draw way too much
+      off = Math.max(0, off);
+      if (off - lastOff < POINT_DENSITY)
+        continue;
+
+      var pow = accPow / accCount;
+      var db = 10 * Math.log(pow / reference) * this.scale;
+      plot(off, db);
+
+      accPow = 0;
+      accCount = 0;
+      lastOff = off;
     }
     
-    function plot (freq, d) {
-        var x = (Math.log(1 + freq) - 3) / 7 * self.width;
-        var y = Math.max(0, self.height - d / 1e4 * self.scale);
+    function plot (x, d) {
+        var x = x * self.width;
+        var y = Math.max(0, self.height - d);
         points.push(x + ',' + y);
     }
     
